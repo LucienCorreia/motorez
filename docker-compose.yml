@@ -1,0 +1,62 @@
+services:
+  mocks-db:
+    image: mysql:latest
+    restart: always
+    container_name: mocks-db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: mocks
+    volumes:
+      - ./data/mocks-db-data:/var/lib/mysql
+
+  app-db:
+    image: mysql:latest
+    restart: always
+    container_name: app-db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: app
+    volumes:
+      - ./data/app-db-data:/var/lib/mysql
+
+  mocks-php-fpm:
+    build:
+      dockerfile: Dockerfile.mocks
+    container_name: mocks-php-fpm
+    depends_on:
+      - mocks-db
+    volumes:
+      - ./mocks:/app
+  
+  app-php-fpm:
+    build:
+      dockerfile: Dockerfile.app
+    container_name: app-php-fpm
+    depends_on:
+      - app-db
+    volumes:
+      - ./app:/app
+
+  mocks:
+    image: nginx:alpine
+    container_name: mocks
+    ports:
+      - "8080:80"
+    depends_on:
+      - mocks-db
+      - mocks-php-fpm
+    volumes:
+      - ./mocks:/app
+      - ./nginx/mocks/default.conf:/etc/nginx/conf.d/default.conf
+
+  app:
+    image: nginx:alpine
+    container_name: app
+    ports:
+      - "80:80"
+    depends_on:
+      - app-db
+      - app-php-fpm
+    volumes:
+      - ./app:/app
+      - ./nginx/app/default.conf:/etc/nginx/conf.d/default.conf
